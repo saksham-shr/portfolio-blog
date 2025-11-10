@@ -22,19 +22,38 @@ check_error() {
 install_mongodb() {
     echo "--- 1.1 Installing MongoDB ---"
     
-    # Update package list
+    # Install necessary dependencies for adding repository
     sudo apt update
-    check_error "Failed to update package list."
+    sudo apt install -y gnupg curl
+    check_error "Failed to install gnupg and curl."
     
-    # Install MongoDB
-    # Note: This installs the community edition from the Ubuntu repositories.
-    sudo apt install -y mongodb
+    # 1. Import the public GPG key
+    echo "Importing MongoDB GPG key..."
+    curl -fsSL https://pgp.mongodb.com/server-6.0.asc | \
+       sudo gpg -o /usr/share/keyrings/mongodb-server-6.0.gpg \
+       --dearmor
+    check_error "Failed to import MongoDB GPG key."
+    
+    # 2. Create a list file for MongoDB
+    echo "Creating MongoDB list file..."
+    echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-6.0.gpg ] https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/6.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-6.0.list
+    check_error "Failed to create MongoDB list file."
+    
+    # 3. Reload the local package database
+    echo "Updating package list..."
+    sudo apt update
+    check_error "Failed to update package list after adding MongoDB repo."
+    
+    # 4. Install the MongoDB packages
+    echo "Installing MongoDB (mongodb-org)..."
+    sudo apt install -y mongodb-org
     check_error "MongoDB installation failed."
     
-    # Start and enable MongoDB service
-    sudo systemctl start mongodb
+    # 5. Start and enable MongoDB service
+    echo "Starting and enabling MongoDB service..."
+    sudo systemctl start mongod
     check_error "Failed to start MongoDB service."
-    sudo systemctl enable mongodb
+    sudo systemctl enable mongod
     check_error "Failed to enable MongoDB service."
     
     echo "MongoDB installed and running successfully."
